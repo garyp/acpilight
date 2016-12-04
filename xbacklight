@@ -9,6 +9,7 @@ SYS_PATH = "/sys/class/backlight"
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 
@@ -29,6 +30,7 @@ def clamp(v, vmin, vmax):
 
 class Controller(object):
     def __init__(self, ctrl):
+        self._controller = ctrl
         self._brightness_path = os.path.join(SYS_PATH, ctrl, "brightness")
         with open(os.path.join(SYS_PATH, ctrl, "max_brightness")) as fh:
             self._max_brightness = int(fh.read())
@@ -42,8 +44,12 @@ class Controller(object):
 
     def set_raw_brightness(self, b):
         b = str(int(round(b))).encode('ascii')
-        with open(self._brightness_path, "w") as fh:
-            fh.write(b)
+        if self._controller == 'intel_backlight':
+            subprocess.run(['pkexec', '/usr/lib/xserver-xorg-video-intel/xf86-video-intel-backlight-helper', self._controller],
+                    input=b, check=True)
+        else:
+            with open(self._brightness_path, "w") as fh:
+                fh.write(b)
 
     def set_brightness(self, pc):
         self.set_raw_brightness(pc * self._max_brightness / 100)
